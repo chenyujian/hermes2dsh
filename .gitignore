@@ -7,3 +7,4 @@ fixtures/sample-dsh/
 *.log
 .idea/
 .vscode/
+dev/out/
