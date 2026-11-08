@@ -22,7 +22,10 @@
     "preview": "node ./bin/hermes2dsh.js preview",
     "test:fixture": "node ./bin/hermes2dsh.js preview --hermes-home ./fixtures/sample-hermes --dsh-home ./fixtures/sample-dsh --workspace-target ./fixtures/sample-dsh/workspace",
     "ds:codegen": "node ./dev/scripts/ds-codegen.js",
-    "ds:codegen:dry": "node ./dev/scripts/ds-codegen.js --dry-write"
+    "ds:codegen:dry": "node ./dev/scripts/ds-codegen.js --dry-write",
+    "test": "node test/skill-flatten.mjs && node test/memory-merge.mjs",
+    "test:unit": "node test/skill-flatten.mjs && node test/memory-merge.mjs",
+    "test:all": "npm run test && npm run test:fixture"
   },
   "keywords": [
     "hermes",

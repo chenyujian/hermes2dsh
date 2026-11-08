@@ -159,16 +159,22 @@ export function buildPlan(inventory, options) {
     const usedNames = new Map();
 
     inventory.skills.forEach((skill, idx) => {
-      const rel = inventory.hermesHome
-        ? path.relative(skillsRoot, skill.path).split(path.sep).join('/')
-        : path.basename(skill.path);
+      // Origin = skill directory under skills/, never include SKILL.md filename
+      const origin =
+        skill.dir && skillsRoot
+          ? path.relative(skillsRoot, skill.dir).split(path.sep).join('/') ||
+            skill.name ||
+            `skill-${idx + 1}`
+          : skill.name || `skill-${idx + 1}`;
       const leaf =
-        skill.name || path.basename(path.dirname(String(skill.path || ''))) || 'unnamed-skill';
+        skill.name ||
+        path.basename(String(skill.dir || '')) ||
+        'unnamed-skill';
 
       let destName = leaf;
       let status = 'migrate';
       let replace = false;
-      let reason = `Flatten skill "${rel}" -> ${path.basename(destRoot)}/${destName}/`;
+      let reason = `Flatten skill "${origin}" -> ${path.basename(destRoot)}/${destName}/`;
 
       const prior = usedNames.get(destName);
       const destExists = exists(path.join(destRoot, destName));
@@ -177,27 +183,27 @@ export function buildPlan(inventory, options) {
         if (conflictPolicy === 'skip') {
           status = 'conflict';
           reason = prior !== undefined
-            ? `skill "${rel}" flattens to "${destName}" which is already taken by "${prior}"; skipped`
-            : `skill "${rel}" target ${destName}/ already exists; skipped (policy=skip)`;
+            ? `skill "${origin}" flattens to "${destName}" which is already taken by "${prior}"; skipped`
+            : `skill "${origin}" target ${destName}/ already exists; skipped (policy=skip)`;
         } else if (conflictPolicy === 'rename') {
           destName = uniqueName(destRoot, leaf, usedNames);
-          reason = `skill "${rel}" flat name "${leaf}" exists; renaming to ${destName}/`;
+          reason = `skill "${origin}" flat name "${leaf}" exists; renaming to ${destName}/`;
         } else {
           replace = true;
-          reason = `skill "${rel}" flat name "${leaf}" exists; will overwrite`;
+          reason = `skill "${origin}" flat name "${leaf}" exists; will overwrite`;
         }
       }
 
-      usedNames.set(destName, rel);
+      usedNames.set(destName, origin);
 
       add({
-        id: `skill:${rel || skill.name || `skill-${idx + 1}`}`,
+        id: `skill:${origin}`,
         kind: 'skill-copy',
         status,
         source: skill.dir,
         dest: path.join(destRoot, destName),
         skillFile: skill.path,
-        origin: rel,
+        origin,
         flatName: destName,
         replace,
         reason,

@@ -318,9 +318,15 @@ export function mergeMarkdownSectionsDetailed(parts, opts = {}) {
 
   const out = [];
   const preambleOut = trimBlankEdges(preamble);
+  const existingSecs = existing.sections;
   if (preambleOut.length) {
     out.push(...preambleOut);
-    if (kept.length) out.push('');
+    if (existingSecs.length || kept.length) out.push('');
+  }
+  // Preserve destination sections, then append newly kept source sections.
+  for (const sec of existingSecs) {
+    out.push(...trimBlankEdges(sec.lines));
+    out.push('');
   }
   for (const sec of kept) {
     out.push(...trimBlankEdges(sec.lines));
