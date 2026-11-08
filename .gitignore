@@ -12,3 +12,6 @@ dev/out/*
 dev/out/*.request.md
 dev/out/*.raw.txt
 dev/out/last-run.log
+.env
+**/.env
+!.env.example
