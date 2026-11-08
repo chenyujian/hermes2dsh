@@ -1,0 +1,38 @@
+{
+  "name": "hermes2dsh",
+  "version": "0.1.0",
+  "description": "Migrate Hermes Agent (~/.hermes) user data into DeepSeek Harness / DSH (~/.dsh)",
+  "type": "module",
+  "bin": {
+    "hermes2dsh": "./bin/hermes2dsh.js"
+  },
+  "main": "./src/cli.js",
+  "files": [
+    "bin",
+    "src",
+    "mappings",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node ./bin/hermes2dsh.js",
+    "preview": "node ./bin/hermes2dsh.js preview",
+    "test:fixture": "node ./bin/hermes2dsh.js preview --hermes-home ./fixtures/sample-hermes --dsh-home ./fixtures/sample-dsh --workspace-target ./fixtures/sample-dsh/workspace"
+  },
+  "keywords": [
+    "hermes",
+    "dsh",
+    "deepseek",
+    "migration",
+    "cli"
+  ],
+  "author": "james chen",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/hermes2dsh"
+  }
+}

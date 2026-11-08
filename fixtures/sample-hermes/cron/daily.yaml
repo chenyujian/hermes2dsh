@@ -1,0 +1,2 @@
+schedule: "0 9 * * *"
+task: morning-brief

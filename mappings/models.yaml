@@ -1,0 +1,16 @@
+# Best-effort model name hints (placeholder — community PRs welcome)
+# Hermes / provider-style names → suggested DSH / DeepSeek-side labels
+
+qwen2.5-72b: deepseek-chat
+qwen2.5-32b: deepseek-chat
+qwen2.5-14b: deepseek-chat
+qwen2.5-7b: deepseek-chat
+qwen-max: deepseek-chat
+qwen-plus: deepseek-chat
+qwen-turbo: deepseek-chat
+gpt-4o: deepseek-chat
+gpt-4.1: deepseek-chat
+claude-3-5-sonnet: deepseek-chat
+claude-sonnet-4: deepseek-chat
+hermes-*: deepseek-chat
+default: deepseek-chat

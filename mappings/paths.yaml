@@ -1,0 +1,50 @@
+# Hermes → DSH path mapping table (v0.1)
+# Relative paths are resolved against --hermes-home / --dsh-home.
+
+soul:
+  source: SOUL.md
+  dest: agent-presets/hermes-soul.md
+  note: "Copied as a DSH agent preset draft. Wire it into your active agent manually if DSH does not auto-load this path."
+
+memory:
+  sources:
+    - memories/MEMORY.md
+    - memories/USER.md
+  dest_dir: hermes-imports/memory/
+  merge: section_dedupe
+  note: "Merged under ~/.dsh/hermes-imports/memory/. Section headers (## / §) are used for light dedupe."
+
+skills:
+  source_glob: skills/**/SKILL.md
+  dest_dir: skills/hermes-imports/
+  flatten: skill_dirname
+  note: "Nested category dirs are flattened to the skill folder name that contains SKILL.md."
+
+agents_md:
+  sources:
+    - AGENTS.md
+    - workspace/AGENTS.md
+  dest_name: AGENTS.md
+  requires: workspace_target
+  note: "Only written when --workspace-target is set."
+
+config:
+  source: config.yaml
+  dest: hermes-imports/config-mapped.yaml
+  note: "Non-secret keys only. Does NOT overwrite ~/.dsh/settings.yaml in v0.1."
+
+secrets:
+  sources:
+    - .env
+    - auth.json
+    - weixin/
+  dest_dir: hermes-imports/secrets/
+  requires_flag: secrets
+  note: "Skipped unless --secrets. Weixin iLink tokens should be re-scanned in DSH after migrate."
+
+cron:
+  source_dir: cron/
+  dest_dir: hermes-imports/cron/
+  mvp: skip
+  full: copy_raw
+  note: "MVP skips cron. Full preset copies raw files for manual review — no auto schedule mapping yet."
