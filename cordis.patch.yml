@@ -1,0 +1,11 @@
+# hermes2dsh dsh bundle patch: register the migration skill at runtime.
+#
+# Install:
+#   dsh plugin --profile <web|desktop> add file:/absolute/path/to/hermes2dsh
+#   # or after publish: dsh plugin --profile web add hermes2dsh
+#
+# The entry mounts lib/dsh-plugin.js, which registers skills/hermes2dsh/SKILL.md
+# with ctx.skills. The CLI remains available via bin/hermes2dsh.js.
+- insert:
+  - id: hermes2dsh-skill
+    name: 'hermes2dsh'

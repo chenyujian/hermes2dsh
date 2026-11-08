@@ -42,7 +42,7 @@ R1 选定切片 → R2 写/改 prompt + 验收命令
 - ~~P0 补 `test/memory-merge.mjs`、`test/skill-flatten.mjs`~~  
 - ~~P1 cron full 映射说明 + 原始拷贝验收~~  
 - ~~P1 Reviewer prompt 模板~~ → `dev/prompts/roles/reviewer.md` + `npm run role:review -- --slice NN`  
-- P2 dsh plugin 包装  
+- ~~P2 dsh plugin 包装~~（`plugin.json` + skill + cordis bundle）  
 - P2 GitHub 开源发布
 
 ## 角色怎么「定」到工具里

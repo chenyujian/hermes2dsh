@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hermes2dsh",
+  "version": "0.1.0",
+  "description": "Migrate Hermes Agent (~/.hermes) user data into DeepSeek Harness / DSH (~/.dsh): preview/apply CLI plus an agent skill and optional DSH profile bundle.",
+  "author": {
+    "name": "James Chen"
+  },
+  "license": "MIT",
+  "keywords": [
+    "hermes",
+    "dsh",
+    "deepseek",
+    "deepseek-harness",
+    "migration",
+    "import",
+    "cli",
+    "skills"
+  ],
+  "extensions": {
+    "com.deepseek.harness": {
+      "schemaVersion": "1.0.0"
+    }
+  }
+}

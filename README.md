@@ -32,6 +32,27 @@ node ./bin/hermes2dsh.js preview
 
 ---
 
+
+## DSH plugin / 作为插件安装
+
+双格式包装（与 [dsh-dual-plugin-guide](https://github.com/Fectivnfy112357/dsh-dual-plugin-guide) 同类）：
+
+1. **Agent Plugins 1.0**：根目录 `plugin.json` + `skills/hermes2dsh/SKILL.md`（+ `com.deepseek.harness/commands/hermes-import.md`）
+2. **DSH profile bundle**：`package.json` → `dsh.bundle.patch` → `cordis.patch.yml` → `lib/dsh-plugin.js` 向 `ctx.skills` 注册同一 skill
+
+```bash
+# 本地路径安装到某个 profile（web / desktop 等）
+dsh plugin --profile web add file:/absolute/path/to/hermes2dsh
+
+# 装好后仍可直接跑 CLI
+node /absolute/path/to/hermes2dsh/bin/hermes2dsh.js preview
+# 或（若已 npm link / 全局安装）
+hermes2dsh preview
+```
+
+Agent 侧：加载 skill `hermes2dsh`，或使用 slash command `/hermes-import preview`。  
+**默认不要带 `--secrets`**；微信请在 DSH 里重新扫码。
+
 ## Usage / 用法
 
 ```bash

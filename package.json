@@ -6,11 +6,16 @@
   "bin": {
     "hermes2dsh": "./bin/hermes2dsh.js"
   },
-  "main": "./src/cli.js",
+  "main": "./lib/dsh-plugin.js",
   "files": [
     "bin",
     "src",
+    "lib",
     "mappings",
+    "skills",
+    "com.deepseek.harness",
+    "plugin.json",
+    "cordis.patch.yml",
     "LICENSE",
     "README.md"
   ],
@@ -23,22 +28,46 @@
     "test:fixture": "node ./bin/hermes2dsh.js preview --hermes-home ./fixtures/sample-hermes --dsh-home ./fixtures/sample-dsh --workspace-target ./fixtures/sample-dsh/workspace",
     "ds:codegen": "node ./dev/scripts/ds-codegen.js",
     "ds:codegen:dry": "node ./dev/scripts/ds-codegen.js --dry-write",
-    "test": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs",
-    "test:unit": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs",
+    "test": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs && node test/plugin-pack.mjs",
+    "test:unit": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs && node test/plugin-pack.mjs",
     "test:all": "npm run test && npm run test:fixture",
-    "role:review": "node ./dev/scripts/run-role.mjs --role reviewer --local"
+    "role:review": "node ./dev/scripts/run-role.mjs --role reviewer --local",
+    "test:plugin": "node test/plugin-pack.mjs"
   },
   "keywords": [
     "hermes",
     "dsh",
     "deepseek",
     "migration",
-    "cli"
+    "cli",
+    "deepseek-harness",
+    "dsh-plugin",
+    "agent-plugins",
+    "skills",
+    "import"
   ],
   "author": "james chen",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/example/hermes2dsh"
+  },
+  "exports": {
+    ".": "./lib/dsh-plugin.js",
+    "./cli": "./src/cli.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.6"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
   }
 }
