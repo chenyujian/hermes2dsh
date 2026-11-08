@@ -55,3 +55,12 @@ Grok   跑 preview/fixture，点名修 1–3 处（小 token）
 ## v0.1 已有骨架
 
 CLI + scan/plan/apply/report 已可用。后续切片以 **加深 mapper、冲突策略、测试** 为主，而不是重写 CLI。
+
+## Reviewer 门禁（R5）
+
+```
+npm run role:review -- --slice 03          # local checklist → dev/out/review-03.md
+node dev/scripts/run-role.mjs --role reviewer --slice 03 --call   # optional CodePlan
+```
+
+角色系统提示在 `dev/prompts/roles/`。Verdict 为 `FAIL` 时 exit 2，切片不得 commit。

@@ -25,7 +25,8 @@
     "ds:codegen:dry": "node ./dev/scripts/ds-codegen.js --dry-write",
     "test": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs",
     "test:unit": "node test/skill-flatten.mjs && node test/memory-merge.mjs && node test/cron-full.mjs",
-    "test:all": "npm run test && npm run test:fixture"
+    "test:all": "npm run test && npm run test:fixture",
+    "role:review": "node ./dev/scripts/run-role.mjs --role reviewer --local"
   },
   "keywords": [
     "hermes",

@@ -8,3 +8,4 @@ fixtures/sample-dsh/
 .idea/
 .vscode/
 dev/out/
+dev/out/*.request.md
