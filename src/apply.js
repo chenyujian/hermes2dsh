@@ -3,8 +3,10 @@ import path from 'node:path';
 import {
   copyFile,
   ensureDir,
+  exists,
   isDir,
-  mergeMarkdownSections,
+  isFile,
+  mergeMarkdownSectionsDetailed,
   readText,
   writeText,
 } from './util.js';
@@ -27,6 +29,9 @@ export function applyPlan(plan, opts = {}) {
         reason: action.reason,
         source: action.source,
         dest: action.dest,
+        sources: action.sources,
+        sections: action.sections,
+        skippedSections: action.skippedSections,
       });
       continue;
     }
@@ -39,10 +44,16 @@ export function applyPlan(plan, opts = {}) {
           dryRun: true,
           reason: action.reason,
           source: action.source,
+          sources: action.sources,
           dest: action.dest,
+          policy: action.policy,
+          sections: action.sections,
+          skippedSections: action.skippedSections,
         });
         continue;
       }
+
+      let extra = null;
 
       switch (action.kind) {
         case 'copy':
@@ -52,15 +63,44 @@ export function applyPlan(plan, opts = {}) {
           copyDirRecursive(action.source, action.dest);
           break;
         case 'merge-memory': {
-          const texts = (action.sources || []).map((p) => readText(p));
-          const merged = mergeMarkdownSections(texts);
-          writeText(action.dest, merged);
+          const sources = (action.sources || []).map((p) => ({
+            path: p,
+            text: readText(p),
+            source: p,
+          }));
+          const existingText =
+            action.dest && isFile(action.dest) ? readText(action.dest) : '';
+          const merged = mergeMarkdownSectionsDetailed(sources, { existingText });
+          if (merged.text) writeText(action.dest, merged.text);
+
+          const copies = [];
           for (const item of action.alsoCopy || []) {
+            if (exists(item.dest)) {
+              copies.push({
+                source: item.source,
+                dest: item.dest,
+                status: 'skip',
+                reason: 'destination exists',
+              });
+              continue;
+            }
             copyFile(item.source, item.dest);
+            copies.push({ source: item.source, dest: item.dest, status: 'copied' });
           }
+
+          extra = {
+            sections: merged.kept.map((s) => ({
+              key: s.key,
+              title: s.title,
+              source: s.source,
+            })),
+            skippedSections: merged.skipped,
+            copies,
+          };
           break;
         }
         case 'skill-copy':
+          if (action.replace) removeDir(action.dest);
           copyDirRecursive(action.source, action.dest);
           break;
         case 'write-config-mapped':
@@ -82,6 +122,7 @@ export function applyPlan(plan, opts = {}) {
         reason: action.reason,
         source: action.source,
         dest: action.dest,
+        ...(extra || {}),
       });
     } catch (err) {
       results.push({
@@ -96,6 +137,14 @@ export function applyPlan(plan, opts = {}) {
 
   const counts = summarize(results);
   return { results, counts };
+}
+
+function removeDir(dir) {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* best effort */
+  }
 }
 
 function copyDirRecursive(src, dest) {
@@ -152,12 +201,22 @@ function toYaml(obj, indent = 0) {
 }
 
 function summarize(results) {
-  const counts = { migrated: 0, skipped: 0, conflicts: 0, errors: 0 };
+  const counts = {
+    migrated: 0,
+    skipped: 0,
+    conflicts: 0,
+    errors: 0,
+    skippedSections: 0,
+  };
   for (const r of results) {
     if (r.status === 'migrate' || r.status === 'migrated') counts.migrated += 1;
     else if (r.status === 'skip') counts.skipped += 1;
     else if (r.status === 'conflict') counts.conflicts += 1;
     else if (r.status === 'error') counts.errors += 1;
+
+    if (Array.isArray(r.skippedSections)) {
+      counts.skippedSections += r.skippedSections.length;
+    }
   }
   return counts;
 }

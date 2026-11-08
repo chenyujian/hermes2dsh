@@ -1,5 +1,11 @@
 import path from 'node:path';
-import { exists, loadMappings } from './util.js';
+import {
+  exists,
+  isFile,
+  loadMappings,
+  mergeMarkdownSectionsDetailed,
+  readText,
+} from './util.js';
 
 /**
  * Build a migration plan from a Hermes inventory + CLI options.
@@ -69,25 +75,62 @@ export function buildPlan(inventory, options) {
     });
   }
 
-  // Memories
+  // Memories — merged section-by-section (## / §), duplicates skipped.
   if (inventory.memories.length) {
     const destDir = path.join(
       dshHome,
       (pathMap.memory && pathMap.memory.dest_dir) || 'hermes-imports/memory/'
     );
+    const dest = path.join(destDir, 'MERGED.md');
+
+    const sources = inventory.memories.map((m) => ({
+      path: m.path,
+      text: safeRead(m.path),
+      source: m.path,
+    }));
+    const existingText = isFile(dest) ? safeRead(dest) : '';
+    const merged = mergeMarkdownSectionsDetailed(sources, { existingText });
+
+    const alsoCopy = inventory.memories.map((m) => {
+      const target = path.join(destDir, path.basename(m.path));
+      return { source: m.path, dest: target, exists: exists(target) };
+    });
+
+    const hasNewContent = merged.kept.length > 0 || merged.newPreambleLines > 0;
+    let status = 'migrate';
+    let reason;
+
+    if (!hasNewContent) {
+      status = merged.skipped.length ? 'conflict' : 'skip';
+      reason = merged.skipped.length
+        ? `All ${merged.skipped.length} memory section(s) already present in ${path.basename(
+            dest
+          )}; nothing to merge`
+        : 'Memory sources contained no mergeable content';
+    } else {
+      const skippedNote = merged.skipped.length
+        ? `; skipped ${merged.skipped.length} already-present section(s)`
+        : '';
+      const base =
+        (pathMap.memory && pathMap.memory.note) ||
+        'Merge MEMORY.md + USER.md by ##/§ section';
+      reason = `${base} (${merged.kept.length} kept${skippedNote})`;
+    }
+
     add({
       id: 'memory',
       kind: 'merge-memory',
-      status: 'migrate',
+      status,
       sources: inventory.memories.map((m) => m.path),
-      dest: path.join(destDir, 'MERGED.md'),
-      alsoCopy: inventory.memories.map((m) => ({
-        source: m.path,
-        dest: path.join(destDir, path.basename(m.path)),
+      dest,
+      alsoCopy,
+      sections: merged.kept.map((s) => ({
+        key: s.key,
+        title: s.title,
+        source: s.source,
       })),
-      reason:
-        (pathMap.memory && pathMap.memory.note) ||
-        'Merge MEMORY.md + USER.md with section dedupe',
+      skippedSections: merged.skipped,
+      reason,
     });
   } else {
     add({
@@ -98,7 +141,8 @@ export function buildPlan(inventory, options) {
     });
   }
 
-  // Skills
+  // Skills — nested skills/<cat>/<name>/SKILL.md are flattened to
+  // <dest_dir>/<name>/. Flat-name collisions follow --skill-conflict.
   if (!inventory.skills.length) {
     add({
       id: 'skills',
@@ -111,35 +155,55 @@ export function buildPlan(inventory, options) {
       dshHome,
       (pathMap.skills && pathMap.skills.dest_dir) || 'skills/hermes-imports/'
     );
-    for (const skill of inventory.skills) {
-      let destDir = path.join(destRoot, skill.name);
-      let status = 'migrate';
-      let reason = `Copy skill "${skill.name}"`;
-      let finalDest = destDir;
+    const skillsRoot = path.join(inventory.hermesHome || '', 'skills');
+    const usedNames = new Map();
 
-      if (exists(destDir)) {
+    inventory.skills.forEach((skill, idx) => {
+      const rel = inventory.hermesHome
+        ? path.relative(skillsRoot, skill.path).split(path.sep).join('/')
+        : path.basename(skill.path);
+      const leaf =
+        skill.name || path.basename(path.dirname(String(skill.path || ''))) || 'unnamed-skill';
+
+      let destName = leaf;
+      let status = 'migrate';
+      let replace = false;
+      let reason = `Flatten skill "${rel}" -> ${path.basename(destRoot)}/${destName}/`;
+
+      const prior = usedNames.get(destName);
+      const destExists = exists(path.join(destRoot, destName));
+
+      if (prior !== undefined || destExists) {
         if (conflictPolicy === 'skip') {
           status = 'conflict';
-          reason = `skill "${skill.name}" already exists at ${destDir}; skipped`;
+          reason = prior !== undefined
+            ? `skill "${rel}" flattens to "${destName}" which is already taken by "${prior}"; skipped`
+            : `skill "${rel}" target ${destName}/ already exists; skipped (policy=skip)`;
         } else if (conflictPolicy === 'rename') {
-          finalDest = uniquePath(destDir);
-          reason = `skill "${skill.name}" exists; renaming to ${path.basename(finalDest)}`;
+          destName = uniqueName(destRoot, leaf, usedNames);
+          reason = `skill "${rel}" flat name "${leaf}" exists; renaming to ${destName}/`;
         } else {
-          reason = `skill "${skill.name}" exists; will overwrite`;
+          replace = true;
+          reason = `skill "${rel}" flat name "${leaf}" exists; will overwrite`;
         }
       }
 
+      usedNames.set(destName, rel);
+
       add({
-        id: `skill:${skill.name}`,
+        id: `skill:${rel || skill.name || `skill-${idx + 1}`}`,
         kind: 'skill-copy',
         status,
         source: skill.dir,
-        dest: finalDest,
+        dest: path.join(destRoot, destName),
         skillFile: skill.path,
+        origin: rel,
+        flatName: destName,
+        replace,
         reason,
         policy: conflictPolicy,
       });
-    }
+    });
   }
 
   // AGENTS.md
@@ -296,6 +360,14 @@ export function buildPlan(inventory, options) {
   return { actions, pathMap, models, dshHome, preset };
 }
 
+function safeRead(p) {
+  try {
+    return readText(p);
+  } catch {
+    return '';
+  }
+}
+
 function uniquePath(p) {
   const dir = path.dirname(p);
   const ext = path.extname(p);
@@ -306,6 +378,16 @@ function uniquePath(p) {
     candidate = path.join(dir, `${base}-${i}${ext}`);
     i += 1;
   } while (exists(candidate));
+  return candidate;
+}
+
+function uniqueName(root, base, used) {
+  let i = 2;
+  let candidate = `${base}-${i}`;
+  while (used.has(candidate) || exists(path.join(root, candidate))) {
+    i += 1;
+    candidate = `${base}-${i}`;
+  }
   return candidate;
 }
 

@@ -188,55 +188,164 @@ export function listFilesRecursive(dir) {
   return out;
 }
 
-/** Merge markdown by ## or § sections; keep first occurrence of each heading. */
-export function mergeMarkdownSections(parts) {
-  const order = [];
-  const map = new Map();
-  let preamble = [];
+/* ------------------------------------------------------------------ *
+ * Markdown section helpers (memory merge)
+ *
+ * A "section" starts at a `##` (any # level) heading or at a `§` marker.
+ * Section identity is the normalized heading title, so the same section
+ * coming from two different memory files (or already present in the
+ * destination MERGED.md) is merged only once.
+ * ------------------------------------------------------------------ */
 
-  for (const text of parts) {
-    if (!text) continue;
-    const lines = text.replace(/\r\n/g, '\n').split('\n');
-    let currentKey = null;
-    let buf = [];
+export const SECTION_HEADING_RE = /^(?:#{1,6}\s+\S|§)/;
 
-    const flush = () => {
-      if (currentKey === null) {
-        if (buf.length) preamble = preamble.concat(buf);
-      } else {
-        if (!map.has(currentKey)) {
-          map.set(currentKey, buf);
-          order.push(currentKey);
-        }
-        // else drop duplicate section (dedupe)
-      }
-      buf = [];
-    };
+export function isSectionHeading(line) {
+  if (typeof line !== 'string') return false;
+  return SECTION_HEADING_RE.test(line.trim());
+}
 
-    for (const line of lines) {
-      const isHeading =
-        /^#{1,6}\s+/.test(line) || /^§\s*/.test(line) || /^§[^\s]/.test(line);
-      if (isHeading) {
-        flush();
-        currentKey = line.trim();
-        buf = [line];
-      } else {
-        buf.push(line);
-      }
+export function normalizeSectionKey(title) {
+  return String(title == null ? '' : title)
+    .replace(/[`*_]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function sectionKeyOf(line) {
+  const m = /^(?:#{1,6}\s+|§\s*)(.*)$/.exec(String(line == null ? '' : line).trim());
+  if (!m) return null;
+  const key = normalizeSectionKey(m[1]);
+  return key || null;
+}
+
+/** Split markdown text into { preamble: string[], sections: [{key,title,lines}] }. */
+export function splitMarkdownSections(text) {
+  const lines = String(text == null ? '' : text).replace(/\r\n/g, '\n').split('\n');
+  const preamble = [];
+  const sections = [];
+  let cur = null;
+
+  for (const line of lines) {
+    if (isSectionHeading(line)) {
+      const key = sectionKeyOf(line) || `untitled-${sections.length + 1}`;
+      cur = { key, title: line.trim(), lines: [line] };
+      sections.push(cur);
+    } else if (cur) {
+      cur.lines.push(line);
+    } else {
+      preamble.push(line);
     }
-    flush();
   }
+
+  return { preamble, sections };
+}
+
+/**
+ * Merge markdown parts section-by-section.
+ *
+ * @param {Array<string|{text?:string, source?:string}>} parts
+ * @param {{ existingText?: string }} [opts] markdown already present in the dest,
+ *        its sections are treated as "already migrated" and skipped.
+ * @returns {{ text: string, kept: Array, skipped: Array, newPreambleLines: number }}
+ */
+export function mergeMarkdownSectionsDetailed(parts, opts = {}) {
+  const existingText = typeof opts.existingText === 'string' ? opts.existingText : '';
+  const existing = splitMarkdownSections(existingText);
+
+  const seen = new Map();
+  for (const sec of existing.sections) {
+    if (!seen.has(sec.key)) seen.set(sec.key, { origin: 'destination' });
+  }
+
+  const preamble = [];
+  const seenPreamble = new Set();
+  let newPreambleLines = 0;
+
+  const pushPreamble = (line, { fromSource = false } = {}) => {
+    const t = line.trim();
+    if (!t) {
+      preamble.push('');
+      return;
+    }
+    if (seenPreamble.has(t)) return;
+    seenPreamble.add(t);
+    preamble.push(line);
+    if (fromSource) newPreambleLines += 1;
+  };
+
+  for (const line of existing.preamble) pushPreamble(line);
+
+  const kept = [];
+  const skipped = [];
+  const list = Array.isArray(parts) ? parts : parts ? [parts] : [];
+
+  list.forEach((raw, idx) => {
+    const isObj = raw !== null && typeof raw === 'object';
+    const text = isObj
+      ? typeof raw.text === 'string'
+        ? raw.text
+        : ''
+      : typeof raw === 'string'
+        ? raw
+        : '';
+    if (!text.trim()) return;
+
+    const source = isObj && raw.source ? String(raw.source) : `source#${idx + 1}`;
+    const parsed = splitMarkdownSections(text);
+
+    for (const line of parsed.preamble) pushPreamble(line, { fromSource: true });
+
+    for (const sec of parsed.sections) {
+      const prior = seen.get(sec.key);
+      if (prior) {
+        skipped.push({
+          key: sec.key,
+          title: sec.title,
+          source,
+          reason:
+            prior.origin === 'destination'
+              ? 'section already present in destination'
+              : `duplicate of section from ${prior.origin}`,
+        });
+        continue;
+      }
+      seen.set(sec.key, { origin: source });
+      kept.push({ key: sec.key, title: sec.title, source, lines: sec.lines });
+    }
+  });
 
   const out = [];
-  if (preamble.length) {
-    out.push(...preamble);
-    if (order.length) out.push('');
+  const preambleOut = trimBlankEdges(preamble);
+  if (preambleOut.length) {
+    out.push(...preambleOut);
+    if (kept.length) out.push('');
   }
-  for (const key of order) {
-    out.push(...map.get(key));
+  for (const sec of kept) {
+    out.push(...trimBlankEdges(sec.lines));
     out.push('');
   }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+
+  const body = out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  return {
+    text: body ? `${body}\n` : '',
+    kept,
+    skipped,
+    newPreambleLines,
+  };
+}
+
+function trimBlankEdges(lines) {
+  const out = Array.isArray(lines) ? lines.slice() : [];
+  while (out.length && !String(out[0]).trim()) out.shift();
+  while (out.length && !String(out[out.length - 1]).trim()) out.pop();
+  return out;
+}
+
+/** Merge markdown by ## or § sections; keep first occurrence of each heading. */
+export function mergeMarkdownSections(parts, opts) {
+  return mergeMarkdownSectionsDetailed(parts, opts).text;
 }
 
 export function secretKeyHint(key) {
