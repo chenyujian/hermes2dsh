@@ -64,12 +64,12 @@ hermes2dsh apply --yes
 | `AGENTS.md` | 仅当提供 `--workspace-target` |
 | `config.yaml` 非密钥字段 | 生成 `~/.dsh/hermes-imports/config-mapped.yaml`（**不会**覆盖 `settings.yaml`） |
 | `.env` / `auth.json` / `weixin/` | 默认跳过；`--secrets` 才拷到 `hermes-imports/secrets/` |
-| `cron/` | `mvp` 跳过并注明；`full` 原样拷到 `hermes-imports/cron/` 供人工审查 |
+| `cron/` | `mvp` 跳过并注明；`full` 原样拷到 `hermes-imports/cron/`（保留嵌套）并写 `README-hermes-import.md`；目标已存在时遵循 `--skill-conflict` |
 
 ### 明确不自动做的事
 
 - **不会**改写 DSH 的 `settings.yaml`
-- **不会**自动映射 cron → DSH schedule（full 仅原样备份）
+- **不会**自动映射 cron → DSH schedule（full 仅原样备份 + 导入说明；需在 DSH 里按 `schedule`/`task` 手工重建）
 - **微信 / iLink**：即便 `--secrets` 拷了 token，也**强烈建议在 DSH 插件里重新扫码**（token 可能绑定 Hermes 客户端）
 
 ---
@@ -132,7 +132,7 @@ hermes2dsh/
 ## Roadmap (post v0.1)
 
 - [ ] 更完整的 model / channel 映射
-- [ ] cron → DSH schedule 自动转换
+- [ ] cron → DSH schedule 自动转换（v0.1 full 仅 raw copy + README）
 - [ ] 可选封装为 `dsh plugin` 设置页「从 Hermes 导入」
 - [ ] 会话历史导入（体积大，默认仍跳过）
 

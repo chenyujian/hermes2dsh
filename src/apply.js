@@ -106,6 +106,9 @@ export function applyPlan(plan, opts = {}) {
         case 'write-config-mapped':
           writeText(action.dest, toYaml(action.data));
           break;
+        case 'write-text':
+          writeText(action.dest, action.text || '');
+          break;
         case 'secrets':
         case 'cron':
         case 'skills':

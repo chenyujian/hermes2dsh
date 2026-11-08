@@ -1,0 +1,3 @@
+schedule: "0 10 * * 1"
+task: weekly-review
+note: nested cron path for full-preset copy test

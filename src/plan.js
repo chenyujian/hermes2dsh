@@ -351,14 +351,71 @@ export function buildPlan(inventory, options) {
       dshHome,
       (pathMap.cron && pathMap.cron.dest_dir) || 'hermes-imports/cron/'
     );
+    const cronRoot = path.join(inventory.hermesHome, 'cron');
+    const note =
+      (pathMap.cron && pathMap.cron.note) ||
+      'Full preset: raw cron copy for manual review (no auto schedule map)';
+
+    // One-time import guide next to raw copies
+    const guideDest = path.join(destDir, 'README-hermes-import.md');
+    if (!exists(guideDest)) {
+      add({
+        id: 'cron:guide',
+        kind: 'write-text',
+        status: 'migrate',
+        dest: guideDest,
+        text:
+          '# Hermes cron import (raw)\n\n' +
+          'These files were copied from `~/.hermes/cron/` by hermes2dsh `--preset full`.\n\n' +
+          '**Not auto-mapped** to DSH schedules yet. Review each YAML and recreate the job in DSH\n' +
+          '(Web cron board / schedule config) using the `schedule` and `task` fields.\n\n' +
+          'Source layout under this folder mirrors Hermes. Re-run migrate with conflict policy\n' +
+          '`overwrite` if you want to refresh these copies.\n',
+        reason: 'Write raw-import guide for cron staging dir',
+      });
+    }
+
     for (const c of inventory.cron) {
+      const relUnderCron = path.relative(cronRoot, c.path).split(path.sep).join('/');
+      const dest = path.join(destDir, relUnderCron);
+      let status = 'migrate';
+      let replace = false;
+      let reason = `${note} (${relUnderCron})`;
+
+      if (exists(dest)) {
+        if (conflictPolicy === 'skip') {
+          status = 'conflict';
+          reason = `cron "${relUnderCron}" already at dest; skipped (policy=skip)`;
+        } else if (conflictPolicy === 'rename') {
+          // keep original basename with -importedN; rare for cron staging
+          const renamed = uniquePath(dest);
+          add({
+            id: `cron:${c.rel}`,
+            kind: 'copy',
+            status: 'migrate',
+            source: c.path,
+            dest: renamed,
+            origin: relUnderCron,
+            reason: `cron "${relUnderCron}" exists; renaming copy to ${path.basename(renamed)}`,
+            policy: conflictPolicy,
+          });
+          continue;
+        } else {
+          replace = true;
+          reason = `cron "${relUnderCron}" exists; will overwrite`;
+        }
+      }
+
       add({
         id: `cron:${c.rel}`,
         kind: 'copy',
-        status: 'migrate',
+        status,
         source: c.path,
-        dest: path.join(destDir, path.relative(path.join(inventory.hermesHome, 'cron'), c.path)),
-        reason: 'Full preset: raw cron copy for manual review (no auto schedule map)',
+        dest,
+        origin: relUnderCron,
+        replace,
+        reason,
+        policy: conflictPolicy,
       });
     }
   }

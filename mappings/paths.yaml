@@ -47,4 +47,6 @@ cron:
   dest_dir: hermes-imports/cron/
   mvp: skip
   full: copy_raw
-  note: "MVP skips cron. Full preset copies raw files for manual review — no auto schedule mapping yet."
+  guide: README-hermes-import.md
+  conflict: uses --skill-conflict (skip|overwrite|rename)
+  note: "Full preset: raw cron copy for manual review (no auto schedule map)"

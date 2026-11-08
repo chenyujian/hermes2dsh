@@ -38,9 +38,9 @@ R1 选定切片 → R2 写/改 prompt + 验收命令
 
 ## 当前 backlog（建议）
 
-- P0 修 skill 名带 `SKILL.md` 后缀  
-- P0 补 `test/memory-merge.mjs`、`test/skill-flatten.mjs`  
-- P1 cron full 映射说明 + 原始拷贝验收  
+- ~~P0 修 skill 名带 `SKILL.md` 后缀~~  
+- ~~P0 补 `test/memory-merge.mjs`、`test/skill-flatten.mjs`~~  
+- ~~P1 cron full 映射说明 + 原始拷贝验收~~  
 - P1 Reviewer prompt 模板  
 - P2 dsh plugin 包装  
 - P2 GitHub 开源发布
